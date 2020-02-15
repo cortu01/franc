@@ -1,15 +1,18 @@
 'use strict'
 
 var path = require('path')
+var exec = require('child_process').exec
 var PassThrough = require('stream').PassThrough
 var test = require('tape')
-var execa = require('execa')
 
 var root = path.resolve(process.cwd(), 'packages', 'franc-cli')
 var pkg = require(path.resolve(root, 'package.json'))
 var cli = path.resolve(root, 'index.js')
 
 test('cli', function(t) {
+  var af = 'Alle menslike wesens word vry'
+  var no = 'Alle mennesker er født frie og'
+  var ptBr = 'O Brasil caiu 26 posições'
   var help = ['-h', '--help']
   var version = ['-v', '--version']
   var disallow = ['-i', '--ignore', '-b', '--blacklist']
@@ -20,88 +23,86 @@ test('cli', function(t) {
   t.plan(21)
 
   version.forEach(function(flag) {
-    execa.stdout(cli, [flag]).then(function(result) {
-      t.equal(result, pkg.version, flag)
-    }, t.ifErr)
+    exec(cli + ' ' + flag, function(err, stdout, stderr) {
+      t.deepEqual([err, stderr, stdout], [null, '', pkg.version + '\n'], flag)
+    })
   })
 
   help.forEach(function(flag) {
-    execa.stdout(cli, [flag]).then(function(result) {
-      t.ok(/^\s+CLI to detect the language of text/.test(result), flag)
-    }, t.ifErr)
+    exec(cli + ' ' + flag, function(err, stdout, stderr) {
+      t.deepEqual(
+        [err, stderr, /^\s+CLI to detect the language of text/.test(stdout)],
+        [null, '', true],
+        flag
+      )
+    })
   })
 
-  execa.stdout(cli, ['Alle menslike wesens word vry']).then(function(result) {
-    t.equal(result, 'afr', 'argument')
-  }, t.ifErr)
+  exec(cli + ' "' + af + '"', function(err, stdout, stderr) {
+    t.deepEqual([err, stderr, stdout], [null, '', 'afr\n'], 'argument')
+  })
 
-  execa
-    .stdout(cli, ['Alle', 'menslike', 'wesens', 'word', 'vry'])
-    .then(function(result) {
-      t.equal(result, 'afr', 'multiple arguments')
-    }, t.ifErr)
+  exec(cli + ' ' + af, function(err, stdout, stderr) {
+    t.deepEqual(
+      [err, stderr, stdout],
+      [null, '', 'afr\n'],
+      'multiple arguments'
+    )
+  })
 
-  t.test('stdin', function(st) {
-    var stream = new PassThrough()
-    var values = ['Alle', 'menslike', 'wesens', 'word', 'vry']
-    var index = -1
-    var length = values.length
+  var subprocess = exec(cli, function(err, stdout, stderr) {
+    t.deepEqual([err, stderr, stdout], [null, '', 'afr\n'], 'stdin')
+  })
 
-    st.plan(1)
+  var input = new PassThrough()
 
-    function send() {
-      index++
+  input.pipe(subprocess.stdin)
+  input.write(af.slice(0, af.length / 2))
 
-      if (index === length) {
-        stream.end(values[index])
-      } else {
-        stream.write(values[index] + ' ')
-        setTimeout(send, 10)
-      }
-    }
-
-    send()
-
-    execa.stdout(cli, {input: stream}).then(function(result) {
-      st.equal(result, 'afr', 'stdin')
-    }, st.ifErr)
+  setImmediate(function() {
+    input.end(af.slice(af.length / 2))
   })
 
   allow.forEach(function(flag) {
-    execa
-      .stdout(cli, [flag, 'nob,dan', 'Alle mennesker er født frie og'])
-      .then(function(result) {
-        t.equal(result, 'nob', flag)
-      }, t.ifErr)
+    var args = [cli, flag, 'nob,dan', '"' + no + '"'].join(' ')
+    exec(args, function(err, stdout, stderr) {
+      t.deepEqual([err, stderr, stdout], [null, '', 'nob\n'], flag)
+    })
   })
 
   disallow.forEach(function(flag) {
-    execa
-      .stdout(cli, [flag, 'por,glg', 'O Brasil caiu 26 posições'])
-      .then(function(result) {
-        t.equal(result, 'src', flag)
-      }, t.ifErr)
+    var args = [cli, flag, 'por,glg', '"' + ptBr + '"'].join(' ')
+    exec(args, function(err, stdout, stderr) {
+      t.deepEqual([err, stderr, stdout], [null, '', 'vec\n'], flag)
+    })
   })
 
   minLength.forEach(function(flag) {
-    execa.stdout(cli, [flag, '3', 'the']).then(function(result) {
-      t.equal(result, 'sco', flag + ' (satisfied)')
-    }, t.ifErr)
+    exec([cli, flag, '3', 'the'].join(' '), function(err, stdout, stderr) {
+      t.deepEqual(
+        [err, stderr, stdout],
+        [null, '', 'sco\n'],
+        flag + ' (satisfied)'
+      )
+    })
 
-    execa.stdout(cli, [flag, '4', 'the']).then(function(result) {
-      t.equal(result, 'und', flag + ' (unsatisfied)')
-    }, t.ifErr)
+    exec([cli, flag, '4', 'the'].join(' '), function(err, stdout, stderr) {
+      t.deepEqual(
+        [err, stderr, stdout],
+        [null, '', 'und\n'],
+        flag + ' (unsatisfied)'
+      )
+    })
   })
 
   all.forEach(function(flag) {
-    execa
-      .stdout(cli, [flag, 'Alle menslike wesens word vry'])
-      .then(function(result) {
-        t.deepEqual(
-          result.split('\n').slice(0, 3),
-          ['afr 1', 'nld 0.7532813781788351', 'nob 0.5412223133716161'],
-          flag
-        )
-      }, t.ifErr)
+    var args = [cli, flag, af].join(' ')
+    exec(args, function(err, stdout, stderr) {
+      t.deepEqual(
+        [err, stderr, stdout.split('\n').slice(0, 3)],
+        [null, '', ['afr 1', 'nld 0.7569230769230769', 'nob 0.544']],
+        flag
+      )
+    })
   })
 })

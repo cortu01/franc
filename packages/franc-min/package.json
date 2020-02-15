@@ -1,7 +1,7 @@
 {
   "name": "franc-min",
   "threshold": 8000000,
-  "version": "4.1.0",
+  "version": "5.0.0",
   "description": "Detect the language of text",
   "license": "MIT",
   "keywords": [
@@ -22,6 +22,10 @@
   },
   "repository": "https://github.com/wooorm/franc/tree/master/packages/franc-min",
   "bugs": "https://github.com/wooorm/franc/issues",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/wooorm"
+  },
   "author": "Titus Wormer <tituswormer@gmail.com> (http://wooorm.com)",
   "contributors": [
     "Titus Wormer <tituswormer@gmail.com> (http://wooorm.com)",

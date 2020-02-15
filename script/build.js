@@ -17,7 +17,7 @@ var alpha = require('alpha-sort')
 var information = require('udhr').information()
 var declarations = require('udhr').json()
 var trigrams = require('trigrams').min()
-var scripts = require('unicode-7.0.0').Script
+var scripts = require('unicode-12.1.0').Script
 var customFixtures = require('./custom-fixtures')
 var overrides = require('./udhr-overrides')
 var exclude = require('./udhr-exclude')
@@ -124,9 +124,15 @@ function generate(basename) {
     })
   })
 
-  /* Push Japanese. */
+  /* Push Japanese.
+   * Unicode Kanji Table from http://www.rikai.com/library/kanjitables/kanji_codes.unicode.shtml */
+  var kanjiRegexSource = '[\u3400-\u4DB5\u4E00-\u9FAF]'
   regularExpressions.jpn = new RegExp(
-    expressions.Hiragana.source + '|' + expressions.Katakana.source,
+    expressions.Hiragana.source +
+      '|' +
+      expressions.Katakana.source +
+      '|' +
+      kanjiRegexSource,
     'g'
   )
 
@@ -370,7 +376,7 @@ function sort(a, b) {
 function createExpressions() {
   var res = {}
   scripts.forEach(function(script) {
-    var expression = require('unicode-7.0.0/Script/' + script + '/regex.js')
+    var expression = require('unicode-12.1.0/Script/' + script + '/regex.js')
     res[script] = new RegExp(expression.source, 'g')
   })
   return res
